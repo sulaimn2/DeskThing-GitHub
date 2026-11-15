@@ -148,3 +148,26 @@ button:active {
 .repoContainer button:active {
   filter: drop-shadow(0px 0px 1px #000000);
 }
+.my-pr-dashboard { box-sizing: border-box; width: 100%; height: 100%; overflow-y: auto; padding: 24px; color: var(--text); }
+.my-pr-header { margin: 0 0 8px; }
+.my-pr-header p { margin: 0 0 5px; color: var(--sub-text); font-size: 11px; letter-spacing: .16em; }
+.my-pr-header h1 { margin: 0; font-size: 28px; }
+.my-pr-header span, .my-pr-empty { color: var(--sub-text); }
+.my-pr-section { margin-bottom: 24px; }
+.my-pr-section > h2 { display: flex; align-items: center; gap: 9px; margin: 0 0 10px; font-size: 17px; }
+.my-pr-section > h2 span { padding: 2px 8px; border-radius: 20px; background: var(--surface-200); font-size: 12px; }
+.my-pr-card { margin: 0 0 8px; padding: 8px 10px 1px; border: 1px solid var(--surface-200); border-radius: 10px; }
+.my-pr-card small { display: block; margin: 0 0 5px 4px; color: var(--sub-text); font-size: 12px; }
+.my-pr-card .pull { margin-right: 0; }
+.contentContainer:has(.my-pr-dashboard) { display: block; overflow: hidden; }
+.my-pr-dashboard { min-height: 0; }
+.my-pr-tabs { display:flex; gap:8px; border-bottom:1px solid var(--surface-500); margin-bottom:18px; }
+.my-pr-tabs button { padding:10px 12px; color:var(--sub-text); border-bottom:3px solid transparent; }
+.my-pr-tabs button.active { color:var(--text); border-color:var(--selected); }
+.my-pr-carousel { display:flex; align-items:center; gap:8px; }
+.my-pr-carousel > button { flex:none; color:var(--text); }
+.my-pr-carousel > button:disabled { opacity:.25; }
+.my-pr-carousel .my-pr-list { flex:1; min-width:0; max-height:calc(100vh - 190px); overflow-y:auto; }
+.my-pr-list .my-pr-card { cursor:pointer; }
+.my-pr-card.selected { border-color:var(--selected); }
+.pr-status { padding:0 8px 8px; margin:0; color:var(--sub-text); font-size:13px; }

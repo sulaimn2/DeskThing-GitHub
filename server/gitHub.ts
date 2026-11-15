@@ -320,6 +320,29 @@ class GitHubService {
     return [...openPullRequests, ...closedPullRequests];
   }
 
+  public async getMyOpenPullRequests() {
+    const octokit = new Octokit({ auth: this.gitHubAccessToken || '' });
+    const user = this.gitHubData.user?.username;
+    if (!user) return { authored: [], reviews: [] };
+    const search = async (query: string) => {
+      const { data } = await octokit.request('GET /search/issues', { q: query, per_page: 100, sort: 'updated', order: 'desc' });
+      return data.items.map((item: any): GitHubPullRequest => ({
+        id: item.id, number: item.number, title: item.title, state: item.state,
+        locked: item.locked ?? false, body: item.body ?? null,
+        createdAt: item.created_at, updatedAt: item.updated_at,
+        closedAt: item.closed_at ?? null, mergedAt: item.pull_request?.merged_at ?? null,
+        draft: item.draft ?? false, baseBranch: '', headBranch: '', url: item.html_url,
+        labels: (item.labels ?? []).map((label: any) => ({ id: label.id, name: label.name, color: label.color })),
+        user: item.user ? { id: item.user.id, username: item.user.login, avatarUrl: item.user.avatar_url, url: item.user.html_url } : undefined,
+      }));
+    };
+    const [authored, reviews] = await Promise.all([
+      search(`is:pr is:open author:${user}`),
+      search(`is:pr is:open review-requested:${user}`),
+    ]);
+    return { authored, reviews };
+  }
+
   private async getPullRequestFromData(
     data: any
   ): Promise<GitHubPullRequest[]> {

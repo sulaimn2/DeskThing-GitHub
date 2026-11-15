@@ -9,8 +9,8 @@ import {
 import Header from './components/Header/Header';
 import PullRequests from './components/Pull Requests/PullRequests';
 import Issues from './components/Issues/Issues';
-import { RepoIcon, StarIcon } from '@primer/octicons-react';
-import RepoViewer from './components/RepoViewer/RepoViewer';
+import PullRequest from './components/Pull Request/PullRequest';
+import { GrFormNext, GrFormPrevious } from 'react-icons/gr';
 
 const App: React.FC = () => {
   const gitHubStore = GitHubStore;
@@ -25,6 +25,25 @@ const App: React.FC = () => {
     null
   );
   const [issues, setIssues] = useState<GitHubIssue[] | null>(null);
+  const [myPullRequests, setMyPullRequests] = useState<{ authored: GitHubPullRequest[]; reviews: GitHubPullRequest[] } | null>(null);
+  const [prTab, setPrTab] = useState<'authored' | 'reviews'>('authored');
+  const [prIndex, setPrIndex] = useState(0);
+  const visiblePrs = myPullRequests?.[prTab] ?? [];
+
+  const listRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const list = listRef.current;
+    if (!list) return;
+    const onWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.deltaY > 0 || event.deltaX > 0) setPrIndex((i) => Math.min(i + 1, visiblePrs.length - 1));
+      if (event.deltaY < 0 || event.deltaX < 0) setPrIndex((i) => Math.max(i - 1, 0));
+    };
+    list.addEventListener('wheel', onWheel, { passive: false });
+    return () => list.removeEventListener('wheel', onWheel);
+  }, [visiblePrs.length]);
+  useEffect(() => setPrIndex(0), [prTab, myPullRequests]);
   const [filter, setFilter] = useState<'repos' | 'stars'>('repos');
   const [isTallEnough, setIsTallEnough] = useState(false);
 
@@ -109,12 +128,15 @@ const App: React.FC = () => {
     };
 
     const removeListener = gitHubStore.on(handleGitHubData);
+    const removeMyPulls = gitHubStore.onMyPullRequestsRetrieved(setMyPullRequests);
+    gitHubStore.requestMyOpenPullRequests();
     const removePullRequestsListener =
       gitHubStore.onPullRequestsRetrieved(handlePullRequests);
     const removeIssuesListener = gitHubStore.onIssuesRetrieved(handleIssues);
 
     return () => {
       removeListener();
+      removeMyPulls();
       removePullRequestsListener();
       removeIssuesListener();
     };
@@ -153,78 +175,16 @@ const App: React.FC = () => {
       );
     }
 
-    if (
-      (!gitHubData.myRepositories || gitHubData.myRepositories.length === 0) &&
-      (!gitHubData.starredRepositories ||
-        gitHubData.starredRepositories.length === 0)
-    ) {
-      return (
-        <div className='validation'>
-          <h1>No Repositories Found</h1>
-          <h2>
-            Unable to locate any Repositories for ${gitHubData.user.username}
-          </h2>
-        </div>
-      );
-    }
-
     return (
       <div className='contentContainer' ref={contentContainerRef}>
-        {(!pullRequests || pullRequests.length == 0) &&
-          (!issues || issues.length == 0) && (
-            <>
-              <RepoViewer
-                repos={currentRepos}
-                currentRepoIndex={currentRepoIndex}
-                setCurrentRepoIndex={setCurrentRepoIndex}
-                handleViewIssuesClick={handleViewIssuesClick}
-                handleViewPullRequestsClick={handleViewPullRequestsClick}
-              />
-              {isTallEnough && (
-                <div className='repoContainer--tabs'>
-                  {gitHubData.myRepositories &&
-                    gitHubData.myRepositories.length > 0 && (
-                      <button
-                        className={`repoContainer--filter ${
-                          filter === 'repos' ? 'active' : ''
-                        }`}
-                        onClick={() => setFilter('repos')}
-                      >
-                        <RepoIcon size={32} />
-                        <p>Repositories</p>
-                      </button>
-                    )}
-                  {gitHubData.starredRepositories &&
-                    gitHubData.starredRepositories.length > 0 && (
-                      <button
-                        className={`repoContainer--filter ${
-                          filter === 'stars' ? 'active' : ''
-                        }`}
-                        onClick={() => setFilter('stars')}
-                      >
-                        <StarIcon size={32} />
-                        <p>Stars</p>
-                      </button>
-                    )}
-                </div>
-              )}
-            </>
-          )}
-
-        {/* Pull Requests Section */}
-        {pullRequests && pullRequests.length > 0 && (
-          <PullRequests
-            pullRequests={pullRequests}
-            onBackClick={handleBackClick}
-          />
-        )}
-
-        {/* Issues Section */}
-        {(!pullRequests || pullRequests.length == 0) &&
-          issues &&
-          issues.length > 0 && (
-            <Issues issues={issues} onBackClick={handleBackClick} />
-          )}
+        <div className='my-pr-dashboard'>
+          <header className='my-pr-header'><h1>Pull requests</h1></header>
+          <nav className='my-pr-tabs'><button className={prTab === 'authored' ? 'active' : ''} onClick={() => setPrTab('authored')}>Opened by me ({myPullRequests?.authored.length ?? '…'})</button><button className={prTab === 'reviews' ? 'active' : ''} onClick={() => setPrTab('reviews')}>Requested for my review ({myPullRequests?.reviews.length ?? '…'})</button></nav>
+          <div className='my-pr-carousel'><button aria-label='Previous pull request' disabled={prIndex === 0} onClick={() => setPrIndex((i) => Math.max(i - 1, 0))}><GrFormPrevious size={42}/></button>
+            <section ref={listRef} className='my-pr-list'>{visiblePrs.map((pr, index) => <div className={`my-pr-card ${index === prIndex ? 'selected' : ''}`} key={pr.id} onClick={() => setPrIndex(index)}><small>{pr.url.split('/').slice(3, 5).join(' /')} · #{pr.number}</small><PullRequest pullRequest={pr} onOpenClick={(url) => gitHubStore.openURL(url)} /><p className='pr-status'>Review: {pr.reviewStatus ?? 'Pending'}{pr.checksStatus && <>{' · '}Checks: {pr.checksStatus}</>}</p></div>)}{myPullRequests && !visiblePrs.length && <p className='my-pr-empty'>No pull requests in this tab.</p>}</section>
+            <button aria-label='Next pull request' disabled={prIndex >= visiblePrs.length - 1} onClick={() => setPrIndex((i) => Math.min(i + 1, visiblePrs.length - 1))}><GrFormNext size={42}/></button></div>
+          {!myPullRequests && <p className='my-pr-empty'>Loading your pull requests…</p>}
+        </div>
       </div>
     );
   }

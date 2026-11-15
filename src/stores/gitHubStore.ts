@@ -42,6 +42,8 @@ export interface GitHubIssue {
   closedAt: string | null;
   url: string;
   labels: GitHubLabel[];
+  reviewStatus?: string;
+  checksStatus?: string;
 }
 
 export interface GitHubRepo {
@@ -85,6 +87,8 @@ export interface GitHubPullRequest {
   headBranch: string;
   url: string;
   labels: GitHubLabel[];
+  reviewStatus?: string;
+  checksStatus?: string;
 }
 
 export interface GitHubLabel {
@@ -101,6 +105,7 @@ export class GitHubStore {
   private static instance: GitHubStore | null = null;
   private gitHubData: GitHubData | null = null;
   private pullRequests: GitHubPullRequest[] | null = null;
+  private myPullRequestsListener: (data: { authored: GitHubPullRequest[]; reviews: GitHubPullRequest[] }) => void = () => {};
   private issues: GitHubIssue[] | null = null;
   private listeners: GitHubListener[] = [];
   private pullRequestsListener: PullRequestsListener = () => {};
@@ -115,6 +120,7 @@ export class GitHubStore {
       this.pullRequests = data.payload as GitHubPullRequest[];
       this.pullRequestsListener(this.pullRequests);
     });
+    DeskThing.on("github_my_open_pull_requests", (data: SocketData) => this.myPullRequestsListener(data.payload as { authored: GitHubPullRequest[]; reviews: GitHubPullRequest[] }));
     DeskThing.on("github_issues", (data: SocketData) => {
       this.issues = data.payload as GitHubIssue[];
       this.issuesListener(this.issues);
@@ -137,6 +143,9 @@ export class GitHubStore {
       this.pullRequestsListener = () => {};
     };
   }
+
+  onMyPullRequestsRetrieved(method: (data: { authored: GitHubPullRequest[]; reviews: GitHubPullRequest[] }) => void) { this.myPullRequestsListener = method; return () => { this.myPullRequestsListener = () => {}; }; }
+  requestMyOpenPullRequests() { DeskThing.send({ type: "get", request: "github_my_open_pull_requests" }); }
 
   onIssuesRetrieved(method: IssuesListener) {
     this.issuesListener = method;

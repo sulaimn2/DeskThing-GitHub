@@ -38,6 +38,9 @@ const start = async () => {
       } else {
         console.warn("Error getting GitHub data");
       }
+    } else if (request.request === "github_my_open_pull_requests") {
+      const pullRequests = await gitHub.getMyOpenPullRequests();
+      DeskThing.send({ type: "github_my_open_pull_requests", payload: pullRequests });
     } else if (request.request === "github_pull_requests") {
       const ownerName = (request.payload as any)?.ownerName;
       const repoName = (request.payload as any)?.repoName;
